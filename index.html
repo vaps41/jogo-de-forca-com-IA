@@ -62,20 +62,21 @@
         <div id="home-screen" class="text-center">
             <h1 class="text-4xl md:text-5xl font-bold mb-2 text-cyan-400">Forca para Devs <span class="text-base align-top text-amber-400">IA</span></h1>
             <p class="text-lg mb-8 text-gray-400">Desafios gerados por Inteligência Artificial.</p>
-            <div class="space-y-4 md:space-y-0 md:space-x-4">
+            <!-- CORREÇÃO: Adicionado flexbox para centralizar os botões -->
+            <div class="flex flex-col md:flex-row items-center justify-center gap-4">
                 <button id="create-game-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-6 rounded-lg w-full md:w-auto min-w-[150px] flex items-center justify-center">
                     <span class="btn-text">Criar Jogo</span>
                     <div class="loader hidden ml-2"></div>
                 </button>
                 <button id="join-game-btn" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-6 rounded-lg w-full md:w-auto">
-                    Entrar em um Jogo
+                    Entrar num Jogo
                 </button>
             </div>
         </div>
 
         <!-- Tela de Entrada em Jogo -->
         <div id="join-game-screen" class="hidden text-center">
-            <h2 class="text-3xl font-bold mb-4 text-teal-400">Entrar em um Jogo</h2>
+            <h2 class="text-3xl font-bold mb-4 text-teal-400">Entrar num Jogo</h2>
             <input type="text" id="game-id-input" placeholder="Digite o ID do Jogo..." class="bg-gray-800 border-2 border-gray-700 rounded-lg p-3 text-center w-full max-w-sm mx-auto mb-4 focus:border-teal-500 focus:outline-none uppercase">
             <button id="confirm-join-btn" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-6 rounded-lg">
                 Confirmar ID
@@ -97,7 +98,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                     <button id="share-game-btn" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg">Compartilhar</button>
+                     <button id="share-game-btn" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg">Partilhar</button>
                      <button id="leave-game-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Sair</button>
                 </div>
             </div>
@@ -152,7 +153,7 @@
                      <div class="loader hidden ml-2"></div>
                 </button>
             </div>
-            <p id="waiting-for-host-msg" class="hidden text-gray-400">Aguardando o host iniciar uma nova rodada...</p>
+            <p id="waiting-for-host-msg" class="hidden text-gray-400">A aguardar o anfitrião iniciar uma nova rodada...</p>
         </div>
     </div>
 
@@ -185,84 +186,84 @@
         let isHost = false;
         let namePromptCallback = null;
         
-        let screens, nameModal, gameIdDisplay, difficultyDisplay, hintDisplay, wordDisplay, keyboardContainer, errorsCount, hangmanParts, playersList, gameOverModal, toast, toastMessage;
+        let domElements = {};
 
         const showScreen = (screenName) => {
-            if (!screens) return;
-            Object.values(screens).forEach(screen => screen.classList.add('hidden'));
-            screens[screenName]?.classList.remove('hidden');
+            if (!domElements.screens) return;
+            Object.values(domElements.screens).forEach(screen => screen.classList.add('hidden'));
+            domElements.screens[screenName]?.classList.remove('hidden');
         };
 
         const showToast = (message) => {
-            if (!toastMessage || !toast) return;
-            toastMessage.textContent = message;
-            toast.style.top = '20px';
-            setTimeout(() => { toast.style.top = '-100px'; }, 4000);
+            if (!domElements.toastMessage || !domElements.toast) return;
+            domElements.toastMessage.textContent = message;
+            domElements.toast.style.top = '20px';
+            setTimeout(() => { domElements.toast.style.top = '-100px'; }, 4000);
         };
         
         const normalizeString = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 
         const createKeyboard = () => {
-            if (!keyboardContainer) return;
-            keyboardContainer.innerHTML = '';
+            if (!domElements.keyboardContainer) return;
+            domElements.keyboardContainer.innerHTML = '';
             'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(letter => {
                 const button = document.createElement('button');
                 button.textContent = letter;
                 button.className = 'keyboard-btn bg-gray-700 hover:bg-cyan-500 rounded-md p-2 text-lg font-bold';
                 button.onclick = () => handleGuess(letter);
-                keyboardContainer.appendChild(button);
+                domElements.keyboardContainer.appendChild(button);
             });
         };
         
         const promptForName = (callback) => {
             namePromptCallback = callback;
-            document.getElementById('player-name-input').value = localStorage.getItem('hangmanPlayerName') || '';
-            nameModal.classList.remove('hidden');
-            document.getElementById('player-name-input').focus();
+            domElements.playerNameInput.value = localStorage.getItem('hangmanPlayerName') || '';
+            domElements.nameModal.classList.remove('hidden');
+            domElements.playerNameInput.focus();
         };
 
         const updateUI = (gameData) => {
             if (!gameData || !currentUser) return;
             const { secretWord, hint, guessedLetters = [], players = {}, currentPlayerTurn, playerOrder = [], difficultyLevel = 1 } = gameData;
             
-            hintDisplay.textContent = hint;
-            difficultyDisplay.textContent = `${difficultyLevel} / 10`;
+            domElements.hintDisplay.textContent = hint;
+            domElements.difficultyDisplay.textContent = `${difficultyLevel} / 10`;
             
-            wordDisplay.innerHTML = secretWord.split('').map(letter => {
+            domElements.wordDisplay.innerHTML = secretWord.split('').map(letter => {
                 const isGuessed = guessedLetters.includes(normalizeString(letter)) || !/[A-Z]/.test(normalizeString(letter));
                 return `<div class="word-letter bg-gray-700 rounded-md flex items-center justify-center"><span class="text-2xl font-bold ${isGuessed ? 'opacity-100' : 'opacity-0'}">${letter.toUpperCase()}</span></div>`;
             }).join('');
             const incorrectGuesses = guessedLetters.filter(l => !normalizeString(secretWord).includes(l)).length;
-            errorsCount.textContent = `${incorrectGuesses}`;
-            Object.values(hangmanParts).forEach((part, index) => part.classList.toggle('hidden', index >= incorrectGuesses));
+            domElements.errorsCount.textContent = `${incorrectGuesses}`;
+            Object.values(domElements.hangmanParts).forEach((part, index) => part.classList.toggle('hidden', index >= incorrectGuesses));
             const isMyTurn = currentPlayerTurn === currentUser.uid;
-            Array.from(keyboardContainer.children).forEach(btn => {
+            Array.from(domElements.keyboardContainer.children).forEach(btn => {
                 btn.disabled = !isMyTurn || guessedLetters.includes(btn.textContent);
             });
-            playersList.innerHTML = '';
+            domElements.playersList.innerHTML = '';
             playerOrder.forEach(playerId => {
                 const player = players[playerId];
                 if (!player) return;
                 const playerEl = document.createElement('div');
                 playerEl.className = `p-2 rounded-md flex justify-between items-center transition-all duration-300 ${playerId === currentPlayerTurn ? 'player-turn' : 'bg-gray-700'}`;
                 playerEl.innerHTML = `<span class="font-bold">${player.name} ${player.id === currentUser.uid ? '(Você)' : ''}</span> <span>${player.score} pts</span>`;
-                playersList.appendChild(playerEl);
+                domElements.playersList.appendChild(playerEl);
             });
             const wordIsGuessed = normalizeString(secretWord).split('').every(l => !/[A-Z]/.test(l) || guessedLetters.includes(l));
             if (wordIsGuessed || incorrectGuesses >= 6) {
                 showGameOver(wordIsGuessed, gameData);
             } else {
-                gameOverModal.classList.add('hidden');
+                domElements.gameOverModal.classList.add('hidden');
             }
         };
         
         const showGameOver = (isWin, gameData) => {
             const { secretWord, players, difficultyLevel } = gameData;
-            const gameOverTitle = document.getElementById('game-over-title');
-            const winnerAnnouncement = document.getElementById('winner-announcement');
-            const newWordBtnText = document.getElementById('new-word-btn').querySelector('.btn-text');
+            const gameOverTitle = domElements.gameOverModal.querySelector('#game-over-title');
+            const winnerAnnouncement = domElements.gameOverModal.querySelector('#winner-announcement');
+            const newWordBtnText = domElements.gameOverModal.querySelector('#new-word-btn .btn-text');
 
-            document.getElementById('game-over-word').textContent = secretWord.toUpperCase();
+            domElements.gameOverModal.querySelector('#game-over-word').textContent = secretWord.toUpperCase();
             
             const playersArray = Object.values(players);
             const maxScore = Math.max(...playersArray.map(p => p.score));
@@ -285,9 +286,9 @@
                 newWordBtnText.textContent = "Próxima Rodada";
             }
 
-            document.getElementById('host-controls').classList.toggle('hidden', gameData.hostId !== currentUser.uid);
-            document.getElementById('waiting-for-host-msg').classList.toggle('hidden', gameData.hostId === currentUser.uid);
-            gameOverModal.classList.remove('hidden');
+            domElements.gameOverModal.querySelector('#host-controls').classList.toggle('hidden', gameData.hostId !== currentUser.uid);
+            domElements.gameOverModal.querySelector('#waiting-for-host-msg').classList.toggle('hidden', gameData.hostId === currentUser.uid);
+            domElements.gameOverModal.classList.remove('hidden');
         };
 
         const handleGuess = async (letter) => {
@@ -296,7 +297,7 @@
             const gameSnap = await getDoc(gameRef);
             if (gameSnap.exists()) {
                 const gameData = gameSnap.data();
-                if (gameData.currentPlayerTurn !== currentUser.uid) return showToast("Não é sua vez de jogar!");
+                if (gameData.currentPlayerTurn !== currentUser.uid) return showToast("Não é a sua vez de jogar!");
                 if (gameData.guessedLetters.includes(letter)) return;
                 const isCorrect = normalizeString(gameData.secretWord).includes(letter);
                 const currentPlayerIndex = gameData.playerOrder.indexOf(currentUser.uid);
@@ -342,7 +343,7 @@
                 return JSON.parse(text);
             } catch (error) {
                 console.error("AI word generation failed:", error);
-                showToast("IA indisponível. Usando palavra reserva.");
+                showToast("IA indisponível. A usar palavra de reserva.");
                 return { word: "FALLBACK", hint: "Ocorreu um erro com a IA" };
             }
         };
@@ -362,8 +363,8 @@
         };
 
         const createAndJoinGame = async (playerName) => {
-            if (!currentUser || !db) return showToast("Usuário não autenticado.");
-            const createBtn = document.getElementById('create-game-btn');
+            if (!currentUser || !db) return showToast("Utilizador não autenticado.");
+            const createBtn = domElements.createGameBtn;
             setLoadingState(createBtn, true);
             const { word, hint } = await generateWordWithAI(1);
             setLoadingState(createBtn, false);
@@ -380,18 +381,18 @@
         };
         
         const joinGame = async (gameId) => {
-            if (!currentUser || !db) return showToast("Usuário não autenticado.");
+            if (!currentUser || !db) return showToast("Utilizador não autenticado.");
             currentGameId = gameId.trim().toUpperCase();
             const gameRef = doc(db, `artifacts/${appId}/public/data/hangman`, currentGameId);
             const gameSnap = await getDoc(gameRef);
             if (!gameSnap.exists()) return showToast("Jogo não encontrado! Verifique o ID.");
             
             showScreen('game');
-            gameIdDisplay.textContent = currentGameId;
+            domElements.gameIdDisplay.textContent = currentGameId;
             createKeyboard();
 
             if (!gameSnap.data().players[currentUser.uid]) {
-                const playerName = localStorage.getItem('hangmanPlayerName') || 'Jogador Anônimo';
+                const playerName = localStorage.getItem('hangmanPlayerName') || 'Jogador Anónimo';
                  await updateDoc(gameRef, { 
                     [`players.${currentUser.uid}`]: { id: currentUser.uid, name: playerName, score: 0 },
                     playerOrder: arrayUnion(currentUser.uid)
@@ -404,7 +405,7 @@
                 if (doc.exists()) {
                     updateUI(doc.data());
                 } else {
-                    showToast("O jogo foi encerrado pelo host.");
+                    showToast("O jogo foi encerrado pelo anfitrião.");
                     leaveGame(false);
                 }
             });
@@ -439,20 +440,25 @@
             showScreen('home');
         };
         
+        // --- Ponto de Entrada da Aplicação ---
         document.addEventListener("DOMContentLoaded", () => {
-            screens = { home: document.getElementById('home-screen'), join: document.getElementById('join-game-screen'), game: document.getElementById('game-screen') };
-            nameModal = document.getElementById('name-modal');
-            gameIdDisplay = document.getElementById('game-id-display');
-            difficultyDisplay = document.getElementById('difficulty-display');
-            hintDisplay = document.getElementById('hint-display');
-            wordDisplay = document.getElementById('word-display');
-            keyboardContainer = document.getElementById('keyboard');
-            errorsCount = document.getElementById('errors-count');
-            hangmanParts = { head: document.getElementById('h-head'), body: document.getElementById('h-body'), arm1: document.getElementById('h-arm1'), arm2: document.getElementById('h-arm2'), leg1: document.getElementById('h-leg1'), leg2: document.getElementById('h-leg2') };
-            playersList = document.getElementById('players-list');
-            gameOverModal = document.getElementById('game-over-modal');
-            toast = document.getElementById('toast');
-            toastMessage = document.getElementById('toast-message');
+            domElements = {
+                screens: { home: document.getElementById('home-screen'), join: document.getElementById('join-game-screen'), game: document.getElementById('game-screen') },
+                nameModal: document.getElementById('name-modal'),
+                playerNameInput: document.getElementById('player-name-input'),
+                gameIdDisplay: document.getElementById('game-id-display'),
+                difficultyDisplay: document.getElementById('difficulty-display'),
+                hintDisplay: document.getElementById('hint-display'),
+                wordDisplay: document.getElementById('word-display'),
+                keyboardContainer: document.getElementById('keyboard'),
+                errorsCount: document.getElementById('errors-count'),
+                hangmanParts: { head: document.getElementById('h-head'), body: document.getElementById('h-body'), arm1: document.getElementById('h-arm1'), arm2: document.getElementById('h-arm2'), leg1: document.getElementById('h-leg1'), leg2: document.getElementById('h-leg2') },
+                playersList: document.getElementById('players-list'),
+                gameOverModal: document.getElementById('game-over-modal'),
+                toast: document.getElementById('toast'),
+                toastMessage: document.getElementById('toast-message'),
+                createGameBtn: document.getElementById('create-game-btn')
+            };
 
             const initializeFirebaseAndStart = (config) => {
                 try {
@@ -466,9 +472,9 @@
                             signInAnonymously(auth).catch((error) => {
                                 console.error("Auth Error:", error);
                                 if (error.code === 'auth/admin-restricted-operation' || error.code === 'auth/operation-not-allowed') {
-                                    showToast("Erro: Habilite o login 'Anônimo' no seu console do Firebase.");
+                                    showToast("Erro: Habilite o login 'Anónimo' na sua consola do Firebase.");
                                 } else {
-                                    showToast("Erro de autenticação. Verifique seu console do Firebase.");
+                                    showToast("Erro de autenticação. Verifique a sua consola do Firebase.");
                                 }
                             });
                         }
@@ -479,7 +485,7 @@
                     return;
                 }
                 
-                document.getElementById('create-game-btn').onclick = () => promptForName(createAndJoinGame);
+                domElements.createGameBtn.onclick = () => promptForName(createAndJoinGame);
                 document.getElementById('join-game-btn').onclick = () => showScreen('join');
                 document.getElementById('confirm-join-btn').onclick = () => {
                     const gameId = document.getElementById('game-id-input').value;
@@ -488,7 +494,6 @@
                 };
                 document.getElementById('leave-game-btn').onclick = () => leaveGame(true);
                 
-                // CORREÇÃO DA LÓGICA DE PONTUAÇÃO
                 document.getElementById('new-word-btn').onclick = async (event) => {
                     if (!isHost || !currentGameId) return;
                     const newWordBtn = event.currentTarget;
@@ -501,23 +506,17 @@
                         const gameData = gameSnap.data();
                         const isFinalRound = gameData.difficultyLevel >= 10;
                         
-                        // Se for a rodada final, o botão reinicia o jogo.
                         if (isFinalRound) {
                             const { word, hint } = await generateWordWithAI(1);
                             const currentPlayers = gameData.players;
-                            // Zera a pontuação de todos
-                            for (const pid in currentPlayers) {
-                                currentPlayers[pid].score = 0;
-                            }
+                            for (const pid in currentPlayers) { currentPlayers[pid].score = 0; }
                             await updateDoc(gameRef, {
                                 secretWord: word.toUpperCase(), hint, guessedLetters: [],
                                 players: currentPlayers, 
                                 currentPlayerTurn: gameData.hostId,
                                 difficultyLevel: 1
                             });
-                        } 
-                        // Senão, é a próxima rodada e os pontos são mantidos.
-                        else {
+                        } else {
                             const nextDifficulty = gameData.difficultyLevel + 1;
                             const { word, hint } = await generateWordWithAI(nextDifficulty);
                             await updateDoc(gameRef, {
@@ -527,7 +526,7 @@
                             });
                         }
                         setLoadingState(newWordBtn, false);
-                        gameOverModal.classList.add('hidden');
+                        domElements.gameOverModal.classList.add('hidden');
                     } else {
                          setLoadingState(newWordBtn, false);
                     }
@@ -545,11 +544,10 @@
 
             document.getElementById('back-to-home-1').onclick = () => showScreen('home');
             document.getElementById('confirm-name-btn').onclick = () => {
-                const playerNameInput = document.getElementById('player-name-input');
-                const playerName = playerNameInput.value.trim();
+                const playerName = domElements.playerNameInput.value.trim();
                 if (playerName.length < 2) return showToast("O nome deve ter pelo menos 2 caracteres.");
                 localStorage.setItem('hangmanPlayerName', playerName);
-                nameModal.classList.add('hidden');
+                domElements.nameModal.classList.add('hidden');
                 if (namePromptCallback) {
                     namePromptCallback(playerName);
                     namePromptCallback = null;
