@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Forca para Devs (com IA)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Fira Code', monospace;
+        }
+        .keyboard-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .keyboard-btn:disabled {
+            opacity: 0.4;
+            transform: none;
+            cursor: not-allowed;
+        }
+        .keyboard-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .word-letter {
+            width: 40px;
+            height: 50px;
+        }
+        .player-turn {
+            background-color: #0d9488; /* teal-600 */
+            box-shadow: 0 0 15px rgba(20, 210, 190, 0.5);
+        }
+        @media (max-width: 640px) {
+            .word-letter {
+                width: 30px;
+                height: 40px;
+            }
+        }
+        #toast {
+            transition: top 0.5s ease-in-out;
+            z-index: 100;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div id="app" class="w-full max-w-4xl mx-auto">
+        
+        <!-- Tela Inicial -->
+        <div id="home-screen" class="text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-2 text-cyan-400">Forca para Devs <span class="text-base align-top text-amber-400">IA</span></h1>
+            <p class="text-lg mb-8 text-gray-400">Desafios gerados por Inteligência Artificial.</p>
+            <div class="space-y-4 md:space-y-0 md:space-x-4">
+                <button id="create-game-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-6 rounded-lg w-full md:w-auto min-w-[150px] flex items-center justify-center">
+                    <span class="btn-text">Criar Jogo</span>
+                    <div class="loader hidden ml-2"></div>
+                </button>
+                <button id="join-game-btn" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-6 rounded-lg w-full md:w-auto">
+                    Entrar em um Jogo
+                </button>
+            </div>
+        </div>
+
+        <!-- Tela de Entrada em Jogo -->
+        <div id="join-game-screen" class="hidden text-center">
+            <h2 class="text-3xl font-bold mb-4 text-teal-400">Entrar em um Jogo</h2>
+            <input type="text" id="game-id-input" placeholder="Digite o ID do Jogo..." class="bg-gray-800 border-2 border-gray-700 rounded-lg p-3 text-center w-full max-w-sm mx-auto mb-4 focus:border-teal-500 focus:outline-none uppercase">
+            <button id="confirm-join-btn" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-6 rounded-lg">
+                Confirmar ID
+            </button>
+            <button id="back-to-home-1" class="mt-4 text-gray-400 hover:text-white">Voltar</button>
+        </div>
+
+        <!-- Tela Principal do Jogo -->
+        <div id="game-screen" class="hidden w-full">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-4">
+                <div class="flex items-center gap-6">
+                    <div>
+                         <p class="text-sm text-gray-500">Rodada:</p>
+                         <p id="difficulty-display" class="font-bold text-amber-400 text-lg"></p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">ID do Jogo:</p>
+                        <p id="game-id-display" class="font-bold text-cyan-400 text-lg"></p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                     <button id="share-game-btn" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg">Compartilhar</button>
+                     <button id="leave-game-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Sair</button>
+                </div>
+            </div>
+            
+            <div class="flex flex-col lg:flex-row gap-8">
+                <!-- Lado Esquerdo -->
+                <div class="w-full lg:w-1/2 bg-gray-800 p-6 rounded-lg flex flex-col items-center justify-center">
+                    <div class="mb-4 text-center h-16">
+                        <p class="text-sm text-gray-400">Dica da IA:</p>
+                        <p id="hint-display" class="text-lg text-teal-300 font-semibold"></p>
+                    </div>
+                    <svg id="hangman-svg" viewBox="0 0 200 250" class="w-full max-w-xs mx-auto">
+                        <line x1="10" y1="230" x2="190" y2="230" stroke="white" stroke-width="4" /><line x1="50" y1="230" x2="50" y2="20" stroke="white" stroke-width="4" /><line x1="48" y1="20" x2="150" y2="20" stroke="white" stroke-width="4" /><line x1="150" y1="20" x2="150" y2="60" stroke="white" stroke-width="4" /><circle id="h-head" cx="150" cy="80" r="20" stroke="#FF5555" stroke-width="4" fill="none" class="hidden" /><line id="h-body" x1="150" y1="100" x2="150" y2="160" stroke="#FF5555" stroke-width="4" class="hidden" /><line id="h-arm1" x1="150" y1="120" x2="120" y2="140" stroke="#FF5555" stroke-width="4" class="hidden" /><line id="h-arm2" x1="150" y1="120" x2="180" y2="140" stroke="#FF5555" stroke-width="4" class="hidden" /><line id="h-leg1" x1="150" y1="160" x2="120" y2="190" stroke="#FF5555" stroke-width="4" class="hidden" /><line id="h-leg2" x1="150" y1="160" x2="180" y2="190" stroke="#FF5555" stroke-width="4" class="hidden" />
+                    </svg>
+                    <div class="mt-6">
+                        <p class="text-gray-400 text-center mb-2">Erros: <span id="errors-count">0</span>/6</p>
+                    </div>
+                </div>
+                <!-- Lado Direito -->
+                <div class="w-full lg:w-1/2 flex flex-col justify-between">
+                    <div>
+                        <div id="word-display" class="flex justify-center items-center gap-2 mb-8 flex-wrap"></div>
+                        <div id="keyboard" class="grid grid-cols-7 md:grid-cols-9 gap-2"></div>
+                    </div>
+                    <div id="players-list-container" class="mt-6 bg-gray-800 p-4 rounded-lg">
+                        <h3 class="font-bold mb-2 text-teal-300">Jogadores e Pontuação</h3>
+                        <div id="players-list" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modais e Notificações -->
+    <div id="name-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-20">
+        <div class="bg-gray-800 p-8 rounded-lg text-center shadow-2xl max-w-sm w-full">
+            <h2 class="text-2xl font-bold mb-4 text-cyan-400">Qual o seu nome?</h2>
+            <input type="text" id="player-name-input" placeholder="Digite seu nome..." class="bg-gray-700 border-2 border-gray-600 rounded-lg p-3 text-center w-full mx-auto mb-4 focus:border-cyan-500 focus:outline-none" maxlength="15">
+            <button id="confirm-name-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-6 rounded-lg w-full">Confirmar</button>
+        </div>
+    </div>
+    
+    <div id="game-over-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-20">
+        <div class="bg-gray-800 p-8 rounded-lg text-center shadow-2xl max-w-sm w-full">
+            <h2 id="game-over-title" class="text-4xl font-bold mb-4"></h2>
+            <div id="winner-announcement" class="mb-4"></div>
+            <p class="mb-2">A palavra era:</p>
+            <p id="game-over-word" class="text-3xl font-bold text-cyan-400 mb-6"></p>
+            <div id="host-controls" class="hidden">
+                <button id="new-word-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center min-w-[170px]">
+                     <span class="btn-text">Nova Palavra</span>
+                     <div class="loader hidden ml-2"></div>
+                </button>
+            </div>
+            <p id="waiting-for-host-msg" class="hidden text-gray-400">Aguardando o host iniciar uma nova rodada...</p>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed top-[-100px] left-1/2 -translate-x-1/2 bg-teal-500 text-white py-2 px-5 rounded-lg shadow-lg">
+        <p id="toast-message"></p>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc, deleteDoc, arrayUnion, increment, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // SUA CONFIGURAÇÃO DO FIREBASE (já está correta)
+        const firebaseConfig = {
+            apiKey: "AIzaSyC7A9r7nw6KzTANqs27LHTq3JpX73HwraQ",
+            authDomain: "dev-forca-game.firebaseapp.com",
+            projectId: "dev-forca-game",
+            storageBucket: "dev-forca-game.appspot.com",
+            messagingSenderId: "51282800654",
+            appId: "1:51282800654:web:bd04a5fcc2be2ae1fb4c5f",
+            measurementId: "G-LT03MVREW3"
+        };
+        
+        const appId = 'dev-hangman';
+        
+        let app, auth, db;
+        let currentUser = null;
+        let currentGameId = null;
+        let unsubscribeGame = null;
+        let isHost = false;
+        let namePromptCallback = null;
+        
+        let screens, nameModal, gameIdDisplay, difficultyDisplay, hintDisplay, wordDisplay, keyboardContainer, errorsCount, hangmanParts, playersList, gameOverModal, toast, toastMessage;
+
+        const showScreen = (screenName) => {
+            if (!screens) return;
+            Object.values(screens).forEach(screen => screen.classList.add('hidden'));
+            screens[screenName]?.classList.remove('hidden');
+        };
+
+        const showToast = (message) => {
+            if (!toastMessage || !toast) return;
+            toastMessage.textContent = message;
+            toast.style.top = '20px';
+            setTimeout(() => { toast.style.top = '-100px'; }, 4000);
+        };
+        
+        const normalizeString = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+
+        const createKeyboard = () => {
+            if (!keyboardContainer) return;
+            keyboardContainer.innerHTML = '';
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(letter => {
+                const button = document.createElement('button');
+                button.textContent = letter;
+                button.className = 'keyboard-btn bg-gray-700 hover:bg-cyan-500 rounded-md p-2 text-lg font-bold';
+                button.onclick = () => handleGuess(letter);
+                keyboardContainer.appendChild(button);
+            });
+        };
+        
+        const promptForName = (callback) => {
+            namePromptCallback = callback;
+            document.getElementById('player-name-input').value = localStorage.getItem('hangmanPlayerName') || '';
+            nameModal.classList.remove('hidden');
+            document.getElementById('player-name-input').focus();
+        };
+
+        const updateUI = (gameData) => {
+            if (!gameData || !currentUser) return;
+            const { secretWord, hint, guessedLetters = [], players = {}, currentPlayerTurn, playerOrder = [], difficultyLevel = 1 } = gameData;
+            
+            hintDisplay.textContent = hint;
+            difficultyDisplay.textContent = `${difficultyLevel} / 10`;
+            
+            wordDisplay.innerHTML = secretWord.split('').map(letter => {
+                const isGuessed = guessedLetters.includes(normalizeString(letter)) || !/[A-Z]/.test(normalizeString(letter));
+                return `<div class="word-letter bg-gray-700 rounded-md flex items-center justify-center"><span class="text-2xl font-bold ${isGuessed ? 'opacity-100' : 'opacity-0'}">${letter.toUpperCase()}</span></div>`;
+            }).join('');
+            const incorrectGuesses = guessedLetters.filter(l => !normalizeString(secretWord).includes(l)).length;
+            errorsCount.textContent = `${incorrectGuesses}`;
+            Object.values(hangmanParts).forEach((part, index) => part.classList.toggle('hidden', index >= incorrectGuesses));
+            const isMyTurn = currentPlayerTurn === currentUser.uid;
+            Array.from(keyboardContainer.children).forEach(btn => {
+                btn.disabled = !isMyTurn || guessedLetters.includes(btn.textContent);
+            });
+            playersList.innerHTML = '';
+            playerOrder.forEach(playerId => {
+                const player = players[playerId];
+                if (!player) return;
+                const playerEl = document.createElement('div');
+                playerEl.className = `p-2 rounded-md flex justify-between items-center transition-all duration-300 ${playerId === currentPlayerTurn ? 'player-turn' : 'bg-gray-700'}`;
+                playerEl.innerHTML = `<span class="font-bold">${player.name} ${player.id === currentUser.uid ? '(Você)' : ''}</span> <span>${player.score} pts</span>`;
+                playersList.appendChild(playerEl);
+            });
+            const wordIsGuessed = normalizeString(secretWord).split('').every(l => !/[A-Z]/.test(l) || guessedLetters.includes(l));
+            if (wordIsGuessed || incorrectGuesses >= 6) {
+                showGameOver(wordIsGuessed, gameData);
+            } else {
+                gameOverModal.classList.add('hidden');
+            }
+        };
+        
+        const showGameOver = (isWin, gameData) => {
+            const { secretWord, players, difficultyLevel } = gameData;
+            const gameOverTitle = document.getElementById('game-over-title');
+            const winnerAnnouncement = document.getElementById('winner-announcement');
+            const newWordBtnText = document.getElementById('new-word-btn').querySelector('.btn-text');
+
+            document.getElementById('game-over-word').textContent = secretWord.toUpperCase();
+            
+            const playersArray = Object.values(players);
+            const maxScore = Math.max(...playersArray.map(p => p.score));
+            const winners = playersArray.filter(p => p.score === maxScore && maxScore > 0);
+
+            if (difficultyLevel >= 10) {
+                gameOverTitle.textContent = "FIM DE JOGO!";
+                gameOverTitle.className = 'text-4xl font-bold mb-4 text-amber-400';
+                if (winners.length > 0) {
+                    winnerAnnouncement.innerHTML = `<p class="text-xl">O grande campeão é <span class="font-bold text-yellow-300">${winners.map(w => w.name).join(', ')}</span> com ${maxScore} pontos!</p>`;
+                } else {
+                    winnerAnnouncement.innerHTML = `<p class="text-lg text-gray-400">Ninguém pontuou no jogo. Tente novamente!</p>`;
+                }
+                newWordBtnText.textContent = "Jogar Novamente";
+
+            } else {
+                gameOverTitle.textContent = isWin ? "Rodada Vencida!" : "Rodada Perdida!";
+                gameOverTitle.className = `text-4xl font-bold mb-4 ${isWin ? 'text-green-400' : 'text-red-500'}`;
+                winnerAnnouncement.innerHTML = ''; 
+                newWordBtnText.textContent = "Próxima Rodada";
+            }
+
+            document.getElementById('host-controls').classList.toggle('hidden', gameData.hostId !== currentUser.uid);
+            document.getElementById('waiting-for-host-msg').classList.toggle('hidden', gameData.hostId === currentUser.uid);
+            gameOverModal.classList.remove('hidden');
+        };
+
+        const handleGuess = async (letter) => {
+            if (!currentGameId || !currentUser || !db) return;
+            const gameRef = doc(db, `artifacts/${appId}/public/data/hangman`, currentGameId);
+            const gameSnap = await getDoc(gameRef);
+            if (gameSnap.exists()) {
+                const gameData = gameSnap.data();
+                if (gameData.currentPlayerTurn !== currentUser.uid) return showToast("Não é sua vez de jogar!");
+                if (gameData.guessedLetters.includes(letter)) return;
+                const isCorrect = normalizeString(gameData.secretWord).includes(letter);
+                const currentPlayerIndex = gameData.playerOrder.indexOf(currentUser.uid);
+                const nextPlayerIndex = (currentPlayerIndex + 1) % gameData.playerOrder.length;
+                const nextPlayerId = gameData.playerOrder[nextPlayerIndex];
+                const updatePayload = { guessedLetters: arrayUnion(letter), currentPlayerTurn: nextPlayerId };
+                if (isCorrect) {
+                    updatePayload[`players.${currentUser.uid}.score`] = increment(1);
+                }
+                await updateDoc(gameRef, updatePayload);
+            }
+        };
+        
+        const generateWordWithAI = async (difficulty) => {
+            const prompt = `Você é um assistente para um jogo de forca com tema de programação. Sua tarefa é gerar uma única palavra e uma dica curta para ela.
+            A palavra não deve conter espaços ou hífens e deve ser em inglês, pois é um termo técnico. A dica deve ser em português.
+            A dificuldade atual é ${difficulty} de 10.
+            Para dificuldade 1-3, use termos muito comuns (ex: API, GIT, HTML, CSS, LOOP).
+            Para dificuldade 4-7, use termos intermediários (ex: FUNCAO, CLASSE, PROMISE, DOCKER, COMPILAR).
+            Para dificuldade 8-10, use termos avançados ou específicos (ex: RECURSAO, POLIMORFISMO, HEURISTICA, SINGLETON).
+            Responda com um objeto JSON seguindo este schema:`;
+
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: { "word": { "type": "STRING" }, "hint": { "type": "STRING" } },
+                        required: ["word", "hint"]
+                    }
+                }
+            };
+            
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+                const result = await response.json();
+                const text = result.candidates[0].content.parts[0].text;
+                return JSON.parse(text);
+            } catch (error) {
+                console.error("AI word generation failed:", error);
+                showToast("IA indisponível. Usando palavra reserva.");
+                return { word: "FALLBACK", hint: "Ocorreu um erro com a IA" };
+            }
+        };
+
+        const setLoadingState = (buttonElement, isLoading) => {
+            const textElement = buttonElement.querySelector('.btn-text');
+            const loaderElement = buttonElement.querySelector('.loader');
+            if (isLoading) {
+                buttonElement.disabled = true;
+                textElement.classList.add('hidden');
+                loaderElement.classList.remove('hidden');
+            } else {
+                buttonElement.disabled = false;
+                textElement.classList.remove('hidden');
+                loaderElement.classList.add('hidden');
+            }
+        };
+
+        const createAndJoinGame = async (playerName) => {
+            if (!currentUser || !db) return showToast("Usuário não autenticado.");
+            const createBtn = document.getElementById('create-game-btn');
+            setLoadingState(createBtn, true);
+            const { word, hint } = await generateWordWithAI(1);
+            setLoadingState(createBtn, false);
+            if (!word) return;
+            const gameId = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const gameData = {
+                secretWord: word.toUpperCase(), hint, hostId: currentUser.uid, guessedLetters: [],
+                players: { [currentUser.uid]: { id: currentUser.uid, name: playerName, score: 0 } },
+                playerOrder: [currentUser.uid], currentPlayerTurn: currentUser.uid, createdAt: new Date(),
+                difficultyLevel: 1
+            };
+            await setDoc(doc(db, `artifacts/${appId}/public/data/hangman`, gameId), gameData);
+            await joinGame(gameId);
+        };
+        
+        const joinGame = async (gameId) => {
+            if (!currentUser || !db) return showToast("Usuário não autenticado.");
+            currentGameId = gameId.trim().toUpperCase();
+            const gameRef = doc(db, `artifacts/${appId}/public/data/hangman`, currentGameId);
+            const gameSnap = await getDoc(gameRef);
+            if (!gameSnap.exists()) return showToast("Jogo não encontrado! Verifique o ID.");
+            
+            showScreen('game');
+            gameIdDisplay.textContent = currentGameId;
+            createKeyboard();
+
+            if (!gameSnap.data().players[currentUser.uid]) {
+                const playerName = localStorage.getItem('hangmanPlayerName') || 'Jogador Anônimo';
+                 await updateDoc(gameRef, { 
+                    [`players.${currentUser.uid}`]: { id: currentUser.uid, name: playerName, score: 0 },
+                    playerOrder: arrayUnion(currentUser.uid)
+                });
+            }
+            
+            isHost = gameSnap.data().hostId === currentUser.uid;
+            if (unsubscribeGame) unsubscribeGame();
+            unsubscribeGame = onSnapshot(gameRef, (doc) => {
+                if (doc.exists()) {
+                    updateUI(doc.data());
+                } else {
+                    showToast("O jogo foi encerrado pelo host.");
+                    leaveGame(false);
+                }
+            });
+        };
+        
+        const leaveGame = async (isInitiator = true) => {
+            if (unsubscribeGame) unsubscribeGame();
+            if (isInitiator && currentGameId && currentUser && db) {
+                const gameRef = doc(db, `artifacts/${appId}/public/data/hangman`, currentGameId);
+                const gameSnap = await getDoc(gameRef);
+                if (gameSnap.exists()) {
+                    const gameData = gameSnap.data();
+                    if (gameData.hostId === currentUser.uid) {
+                        await deleteDoc(gameRef);
+                    } else {
+                        const oldPlayerOrder = gameData.playerOrder || [];
+                        const leavingPlayerIndex = oldPlayerOrder.indexOf(currentUser.uid);
+                        const newPlayerOrder = oldPlayerOrder.filter(pId => pId !== currentUser.uid);
+                        const updatePayload = {
+                            [`players.${currentUser.uid}`]: deleteField(),
+                            playerOrder: newPlayerOrder
+                        };
+                        if (gameData.currentPlayerTurn === currentUser.uid && newPlayerOrder.length > 0) {
+                            updatePayload.currentPlayerTurn = newPlayerOrder[leavingPlayerIndex % newPlayerOrder.length];
+                        }
+                        await updateDoc(gameRef, updatePayload);
+                    }
+                }
+            }
+            currentGameId = null; isHost = false; unsubscribeGame = null;
+            window.history.replaceState(null, '', window.location.pathname);
+            showScreen('home');
+        };
+        
+        document.addEventListener("DOMContentLoaded", () => {
+            screens = { home: document.getElementById('home-screen'), join: document.getElementById('join-game-screen'), game: document.getElementById('game-screen') };
+            nameModal = document.getElementById('name-modal');
+            gameIdDisplay = document.getElementById('game-id-display');
+            difficultyDisplay = document.getElementById('difficulty-display');
+            hintDisplay = document.getElementById('hint-display');
+            wordDisplay = document.getElementById('word-display');
+            keyboardContainer = document.getElementById('keyboard');
+            errorsCount = document.getElementById('errors-count');
+            hangmanParts = { head: document.getElementById('h-head'), body: document.getElementById('h-body'), arm1: document.getElementById('h-arm1'), arm2: document.getElementById('h-arm2'), leg1: document.getElementById('h-leg1'), leg2: document.getElementById('h-leg2') };
+            playersList = document.getElementById('players-list');
+            gameOverModal = document.getElementById('game-over-modal');
+            toast = document.getElementById('toast');
+            toastMessage = document.getElementById('toast-message');
+
+            const initializeFirebaseAndStart = (config) => {
+                try {
+                    app = initializeApp(config);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    onAuthStateChanged(auth, (user) => {
+                        if (user) {
+                            currentUser = user;
+                        } else {
+                            signInAnonymously(auth).catch((error) => {
+                                console.error("Auth Error:", error);
+                                if (error.code === 'auth/admin-restricted-operation' || error.code === 'auth/operation-not-allowed') {
+                                    showToast("Erro: Habilite o login 'Anônimo' no seu console do Firebase.");
+                                } else {
+                                    showToast("Erro de autenticação. Verifique seu console do Firebase.");
+                                }
+                            });
+                        }
+                    });
+                } catch (error) {
+                    console.error("Firebase initialization failed:", error);
+                    showToast("Falha ao iniciar o Firebase. Verifique a configuração.");
+                    return;
+                }
+                
+                document.getElementById('create-game-btn').onclick = () => promptForName(createAndJoinGame);
+                document.getElementById('join-game-btn').onclick = () => showScreen('join');
+                document.getElementById('confirm-join-btn').onclick = () => {
+                    const gameId = document.getElementById('game-id-input').value;
+                    if (gameId) { promptForName(() => joinGame(gameId)); } 
+                    else { showToast("Por favor, insira um ID de jogo."); }
+                };
+                document.getElementById('leave-game-btn').onclick = () => leaveGame(true);
+                
+                // CORREÇÃO DA LÓGICA DE PONTUAÇÃO
+                document.getElementById('new-word-btn').onclick = async (event) => {
+                    if (!isHost || !currentGameId) return;
+                    const newWordBtn = event.currentTarget;
+                    setLoadingState(newWordBtn, true);
+                    
+                    const gameRef = doc(db, `artifacts/${appId}/public/data/hangman`, currentGameId);
+                    const gameSnap = await getDoc(gameRef);
+
+                    if (gameSnap.exists()) {
+                        const gameData = gameSnap.data();
+                        const isFinalRound = gameData.difficultyLevel >= 10;
+                        
+                        // Se for a rodada final, o botão reinicia o jogo.
+                        if (isFinalRound) {
+                            const { word, hint } = await generateWordWithAI(1);
+                            const currentPlayers = gameData.players;
+                            // Zera a pontuação de todos
+                            for (const pid in currentPlayers) {
+                                currentPlayers[pid].score = 0;
+                            }
+                            await updateDoc(gameRef, {
+                                secretWord: word.toUpperCase(), hint, guessedLetters: [],
+                                players: currentPlayers, 
+                                currentPlayerTurn: gameData.hostId,
+                                difficultyLevel: 1
+                            });
+                        } 
+                        // Senão, é a próxima rodada e os pontos são mantidos.
+                        else {
+                            const nextDifficulty = gameData.difficultyLevel + 1;
+                            const { word, hint } = await generateWordWithAI(nextDifficulty);
+                            await updateDoc(gameRef, {
+                                secretWord: word.toUpperCase(), hint, guessedLetters: [],
+                                currentPlayerTurn: gameData.hostId,
+                                difficultyLevel: increment(1)
+                            });
+                        }
+                        setLoadingState(newWordBtn, false);
+                        gameOverModal.classList.add('hidden');
+                    } else {
+                         setLoadingState(newWordBtn, false);
+                    }
+                };
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                const gameIdFromUrl = urlParams.get('gameId');
+                if (gameIdFromUrl) {
+                    history.replaceState(null, '', window.location.pathname);
+                    promptForName(() => joinGame(gameIdFromUrl));
+                } else {
+                    showScreen('home');
+                }
+            };
+
+            document.getElementById('back-to-home-1').onclick = () => showScreen('home');
+            document.getElementById('confirm-name-btn').onclick = () => {
+                const playerNameInput = document.getElementById('player-name-input');
+                const playerName = playerNameInput.value.trim();
+                if (playerName.length < 2) return showToast("O nome deve ter pelo menos 2 caracteres.");
+                localStorage.setItem('hangmanPlayerName', playerName);
+                nameModal.classList.add('hidden');
+                if (namePromptCallback) {
+                    namePromptCallback(playerName);
+                    namePromptCallback = null;
+                }
+            };
+            document.getElementById('share-game-btn').onclick = async () => {
+                const shareUrl = `${window.location.origin}${window.location.pathname}?gameId=${currentGameId}`;
+                const shareData = { title: 'Forca para Devs', text: 'Venha jogar Forca para Devs comigo!', url: shareUrl };
+                try {
+                    if (navigator.share) { await navigator.share(shareData); } 
+                    else { throw new Error('Web Share API not supported'); }
+                } catch (err) {
+                    navigator.clipboard.writeText(shareUrl)
+                        .then(() => showToast('Link do jogo copiado!'))
+                        .catch(() => showToast('Falha ao copiar o link.'));
+                }
+            };
+
+            if (firebaseConfig && firebaseConfig.apiKey) {
+                 initializeFirebaseAndStart(firebaseConfig);
+            } else {
+                 showToast("Configuração do Firebase não encontrada ou inválida!");
+                 console.error("O objeto firebaseConfig está ausente ou incompleto.");
+            }
+        });
+    </script>
+</body>
+</html>
