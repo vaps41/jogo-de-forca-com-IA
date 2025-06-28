@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Forca com IA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+        
+        .round-info {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        
+        .game-area {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .word-display {
+            font-size: 2.5em;
+            text-align: center;
+            margin: 20px 0;
+            letter-spacing: 0.3em;
+            font-weight: bold;
+            font-family: monospace;
+        }
+        
+        .hangman-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .hangman {
+            background: white;
+            color: black;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 1.2em;
+            white-space: pre-line;
+            text-align: center;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 15px 0;
+            font-size: 1.1em;
+        }
+        
+        .letters-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            margin: 20px 0;
+        }
+        
+        .letter-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1em;
+            transition: all 0.2s ease;
+        }
+        
+        .letter-btn:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: scale(1.05);
+        }
+        
+        .letter-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .letter-btn.correct {
+            background: #4CAF50 !important;
+            color: white !important;
+        }
+        
+        .letter-btn.wrong {
+            background: #f44336 !important;
+            color: white !important;
+        }
+        
+        .hint-section {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .hint-label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #4CAF50;
+        }
+        
+        .hint-text {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .hint-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            transition: background 0.3s ease;
+        }
+        
+        .hint-btn:hover {
+            background: #45a049;
+        }
+        
+        .hint-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .new-game-btn {
+            background: #FF6B6B;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+        
+        .new-game-btn:hover {
+            background: #ff5252;
+        }
+        
+        .ia-status {
+            text-align: center;
+            padding: 8px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+        
+        .ia-online {
+            background: rgba(76, 175, 80, 0.3);
+            color: #C8E6C9;
+        }
+        
+        .ia-offline {
+            background: rgba(244, 67, 54, 0.3);
+            color: #FFCDD2;
+        }
+        
+        .message {
+            text-align: center;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-weight: bold;
+            display: none;
+        }
+        
+        .message.success {
+            background: rgba(76, 175, 80, 0.8);
+        }
+        
+        .message.error {
+            background: rgba(244, 67, 54, 0.8);
+        }
+        
+        .message.warning {
+            background: rgba(255, 152, 0, 0.8);
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                padding: 15px;
+            }
+            
+            .word-display {
+                font-size: 2em;
+            }
+            
+            .letters-grid {
+                grid-template-columns: repeat(5, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Jogo da Forca com IA</h1>
+        </div>
+        
+        <div class="round-info">
+            Rodada: <span id="currentRound">1</span> / <span id="totalRounds">10</span>
+        </div>
+        
+        <div id="iaStatus" class="ia-status">
+            Verificando status da IA...
+        </div>
+        
+        <div class="game-area">
+            <div class="word-display" id="wordDisplay">
+                _ _ _ _ _ _
+            </div>
+            
+            <div class="hangman-container">
+                <div class="hangman" id="hangman">
+                    |-----
+                    |    |
+                    |    
+                    |    
+                    |    
+                    |
+                =========
+                </div>
+            </div>
+            
+            <div class="status-bar">
+                <div>Erros: <span id="errorCount">0</span>/<span id="maxErrors">6</span></div>
+                <div>Pontos: <span id="score">0</span></div>
+            </div>
+        </div>
+        
+        <div class="letters-grid" id="lettersContainer">
+            <!-- Letras serão geradas dinamicamente -->
+        </div>
+        
+        <div class="hint-section">
+            <div class="hint-label">Dica da IA:</div>
+            <div class="hint-text" id="hintText">
+                Clique no botão para obter uma dica!
+            </div>
+            <button class="hint-btn" id="hintBtn" onclick="getHint()">
+                Obter Dica
+            </button>
+        </div>
+        
+        <div id="message" class="message"></div>
+        
+        <div class="controls">
+            <button class="new-game-btn" onclick="newGame()">Novo Jogo</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do jogo
+        const CONFIG = {
+            maxErrors: 6,
+            totalRounds: 10,
+            // Configure sua chave do Gemini aqui
+            geminiApiKey: 'SUA_CHAVE_DO_GEMINI_AQUI', // Substitua pela sua chave real
+            geminiUrl: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent'
+        };
+        
+        // Palavras de reserva para quando a IA não está disponível
+        const RESERVE_WORDS = [
+            { word: 'JAVASCRIPT', hint: 'Linguagem de programação muito popular para web' },
+            { word: 'PYTHON', hint: 'Linguagem de programação conhecida pela simplicidade' },
+            { word: 'COMPUTADOR', hint: 'Máquina eletrônica que processa dados' },
+            { word: 'INTERNET', hint: 'Rede mundial de computadores' },
+            { word: 'PROGRAMACAO', hint: 'Arte de criar software e aplicações' },
+            { word: 'TECNOLOGIA', hint: 'Aplicação da ciência para resolver problemas' },
+            { word: 'INTELIGENCIA', hint: 'Capacidade de aprender e resolver problemas' },
+            { word: 'ALGORITMO', hint: 'Sequência de passos para resolver um problema' },
+            { word: 'DADOS', hint: 'Informações processadas por computadores' },
+            { word: 'CODIGO', hint: 'Instruções escritas em linguagem de programação' }
+        ];
+        
+        // Estado do jogo
+        let gameState = {
+            currentWord: '',
+            currentHint: '',
+            guessedLetters: [],
+            wrongLetters: [],
+            currentRound: 1,
+            score: 0,
+            isGameActive: true,
+            hintsUsed: 0,
+            iaAvailable: false
+        };
+        
+        // Desenhos da forca
+        const HANGMAN_PARTS = [
+            "|-----\n|    |\n|    \n|    \n|    \n|\n=========",
+            "|-----\n|    |\n|    O\n|    \n|    \n|\n=========",
+            "|-----\n|    |\n|    O\n|    |\n|    \n|\n=========",
+            "|-----\n|    |\n|    O\n|   /|\n|    \n|\n=========",
+            "|-----\n|    |\n|    O\n|   /|\\\n|    \n|\n=========",
+            "|-----\n|    |\n|    O\n|   /|\\\n|   /\n|\n=========",
+            "|-----\n|    |\n|    O\n|   /|\\\n|   / \\\n|\n========="
+        ];
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            checkIAStatus();
+            generateAlphabet();
+            newGame();
+        });
+        
+        // Verificar status da IA
+        async function checkIAStatus() {
+            const statusElement = document.getElementById('iaStatus');
+            statusElement.textContent = 'Verificando status do Gemini...';
+            
+            if (!CONFIG.geminiApiKey || CONFIG.geminiApiKey === 'SUA_CHAVE_DO_GEMINI_AQUI') {
+                gameState.iaAvailable = false;
+                statusElement.textContent = 'IA indisponível. A usar palavra de reserva.';
+                statusElement.className = 'ia-status ia-offline';
+                return;
+            }
+            
+            try {
+                // Testar conexão com Gemini
+                const testResponse = await fetch(`${CONFIG.geminiUrl}?key=${CONFIG.geminiApiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: "Teste de conexão. Responda apenas: OK"
+                            }]
+                        }]
+                    })
+                });
+                
+                if (testResponse.ok) {
+                    gameState.iaAvailable = true;
+                    statusElement.textContent = 'IA funcionando perfeitamente!';
+                    statusElement.className = 'ia-status ia-online';
+                } else {
+                    throw new Error(`HTTP ${testResponse.status}`);
+                }
+            } catch (error) {
+                console.error('Erro ao conectar com Gemini:', error);
+                gameState.iaAvailable = false;
+                statusElement.textContent = 'IA indisponível. A usar palavra de reserva.';
+                statusElement.className = 'ia-status ia-offline';
+            }
+        }
+        
+        // Gerar alfabeto
+        function generateAlphabet() {
+            const container = document.getElementById('lettersContainer');
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            
+            container.innerHTML = '';
+            for (let letter of alphabet) {
+                const button = document.createElement('button');
+                button.className = 'letter-btn';
+                button.textContent = letter;
+                button.onclick = () => guessLetter(letter);
+                button.id = `btn-${letter}`;
+                container.appendChild(button);
+            }
+        }
+        
+        // Novo jogo
+        function newGame() {
+            // Reset do estado
+            gameState.guessedLetters = [];
+            gameState.wrongLetters = [];
+            gameState.isGameActive = true;
+            gameState.hintsUsed = 0;
+            
+            // Escolher palavra
+            selectNewWord();
+            
+            // Reset da interface
+            updateDisplay();
+            resetLetterButtons();
+            document.getElementById('hintBtn').disabled = false;
+            document.getElementById('hintBtn').textContent = 'Obter Dica';
+            document.getElementById('hintText').textContent = 'Clique no botão para obter uma dica!';
+            hideMessage();
+        }
+        
+        // Selecionar nova palavra
+        async function selectNewWord() {
+            if (gameState.iaAvailable) {
+                try {
+                    const wordData = await getWordFromIA();
+                    gameState.currentWord = wordData.word.toUpperCase();
+                    gameState.currentHint = wordData.hint;
+                } catch (error) {
+                    console.error('Erro ao obter palavra da IA:', error);
+                    selectReserveWord();
+                }
+            } else {
+                selectReserveWord();
+            }
+        }
+        
+        // Selecionar palavra de reserva
+        function selectReserveWord() {
+            const randomIndex = Math.floor(Math.random() * RESERVE_WORDS.length);
+            const wordData = RESERVE_WORDS[randomIndex];
+            gameState.currentWord = wordData.word;
+            gameState.currentHint = wordData.hint;
+        }
+        
+        // Obter palavra da IA (Gemini)
+        async function getWordFromIA() {
+            try {
+                const prompt = `Gere uma palavra em português para jogo da forca. A palavra deve ter entre 5 e 12 letras.
+                Também forneça uma dica criativa e interessante sobre essa palavra.
+                
+                Responda EXATAMENTE neste formato JSON:
+                {"word": "PALAVRA", "hint": "Uma dica interessante sobre a palavra"}
+                
+                Não inclua explicações extras, apenas o JSON.`;
+                
+                const response = await fetch(`${CONFIG.geminiUrl}?key=${CONFIG.geminiApiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: prompt
+                            }]
+                        }],
+                        generationConfig: {
+                            temperature: 0.9,
+                            topK: 1,
+                            topP: 1,
+                            maxOutputTokens: 100,
+                        }
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const text = data.candidates[0].content.parts[0].text;
+                
+                // Tentar extrair JSON da resposta
+                const jsonMatch = text.match(/\{[^}]+\}/);
+                if (jsonMatch) {
+                    const wordData = JSON.parse(jsonMatch[0]);
+                    return {
+                        word: wordData.word.toUpperCase().replace(/[^A-Z]/g, ''),
+                        hint: wordData.hint
+                    };
+                } else {
+                    throw new Error('Formato de resposta inválido');
+                }
+                
+            } catch (error) {
+                console.error('Erro ao obter palavra do Gemini:', error);
+                throw error;
+            }
+        }
+        
+        // Adivinhar letra
+        function guessLetter(letter) {
+            if (!gameState.isGameActive || gameState.guessedLetters.includes(letter)) {
+                return;
+            }
+            
+            gameState.guessedLetters.push(letter);
+            const button = document.getElementById(`btn-${letter}`);
+            button.disabled = true;
+            
+            if (gameState.currentWord.includes(letter)) {
+                button.className = 'letter-btn correct';
+                checkWin();
+            } else {
+                gameState.wrongLetters.push(letter);
+                button.className = 'letter-btn wrong';
+                checkLoss();
+            }
+            
+            updateDisplay();
+        }
+        
+        // Obter dica
+        async function getHint() {
+            if (gameState.hintsUsed >= 3) {
+                showMessage('Você já usou todas as dicas disponíveis!', 'warning');
+                return;
+            }
+            
+            const hintButton = document.getElementById('hintBtn');
+            hintButton.disabled = true;
+            hintButton.textContent = 'Gerando dica...';
+            
+            try {
+                let hint;
+                if (gameState.iaAvailable) {
+                    hint = await getHintFromIA();
+                } else {
+                    hint = gameState.currentHint;
+                }
+                
+                document.getElementById('hintText').textContent = hint;
+                gameState.hintsUsed++;
+                
+                setTimeout(() => {
+                    hintButton.disabled = false;
+                    hintButton.textContent = `Obter Dica (${3 - gameState.hintsUsed} restantes)`;
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Erro ao obter dica:', error);
+                document.getElementById('hintText').textContent = gameState.currentHint;
+                hintButton.disabled = false;
+                hintButton.textContent = 'Obter Dica';
+                showMessage('Ocorreu um erro com a IA', 'error');
+            }
+        }
+        
+        // Obter dica da IA (Gemini)
+        async function getHintFromIA() {
+            try {
+                const revealedLetters = gameState.currentWord
+                    .split('')
+                    .map(letter => gameState.guessedLetters.includes(letter) ? letter : '_')
+                    .join(' ');
+                
+                const prompt = `A palavra no jogo da forca é "${gameState.currentWord}".
+                O jogador já descobriu: ${revealedLetters}
+                Letras erradas: ${gameState.wrongLetters.join(', ') || 'nenhuma'}
+                
+                Dê uma dica útil mas não muito óbvia para ajudar o jogador. A dica deve ser criativa e interessante.
+Dê uma dica útil mas não muito óbvia para ajudar o jogador. A dica deve ser criativa e interessante.
+                Responda apenas com a dica, sem explicações extras.`;
+                
+                const response = await fetch(`${CONFIG.geminiUrl}?key=${CONFIG.geminiApiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: prompt
+                            }]
+                        }],
+                        generationConfig: {
+                            temperature: 0.8,
+                            topK: 1,
+                            topP: 1,
+                            maxOutputTokens: 80,
+                        }
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                return data.candidates[0].content.parts[0].text.trim();
+                
+            } catch (error) {
+                console.error('Erro ao obter dica do Gemini:', error);
+                return gameState.currentHint;
+            }
+        }
+        
+        // Atualizar display
+        function updateDisplay() {
+            // Atualizar palavra
+            const wordDisplay = gameState.currentWord
+                .split('')
+                .map(letter => gameState.guessedLetters.includes(letter) ? letter : '_')
+                .join(' ');
+            document.getElementById('wordDisplay').textContent = wordDisplay;
+            
+            // Atualizar forca
+            document.getElementById('hangman').textContent = HANGMAN_PARTS[gameState.wrongLetters.length];
+            
+            // Atualizar contadores
+            document.getElementById('errorCount').textContent = gameState.wrongLetters.length;
+            document.getElementById('currentRound').textContent = gameState.currentRound;
+            document.getElementById('totalRounds').textContent = CONFIG.totalRounds;
+            document.getElementById('score').textContent = gameState.score;
+        }
+        
+        // Verificar vitória
+        function checkWin() {
+            const hasWon = gameState.currentWord
+                .split('')
+                .every(letter => gameState.guessedLetters.includes(letter));
+            
+            if (hasWon) {
+                gameState.isGameActive = false;
+                const points = calculatePoints();
+                gameState.score += points;
+                showMessage(`🎉 Parabéns! Você ganhou ${points} pontos!`, 'success');
+                
+                setTimeout(() => {
+                    nextRound();
+                }, 2000);
+            }
+        }
+        
+        // Verificar derrota
+        function checkLoss() {
+            if (gameState.wrongLetters.length >= CONFIG.maxErrors) {
+                gameState.isGameActive = false;
+                showMessage(`😞 Você perdeu! A palavra era: ${gameState.currentWord}`, 'error');
+                
+                setTimeout(() => {
+                    nextRound();
+                }, 3000);
+            }
+        }
+        
+        // Calcular pontos
+        function calculatePoints() {
+            const basePoints = 100;
+            const errorPenalty = gameState.wrongLetters.length * 10;
+            const hintPenalty = gameState.hintsUsed * 20;
+            return Math.max(10, basePoints - errorPenalty - hintPenalty);
+        }
+        
+        // Próxima rodada
+        function nextRound() {
+            if (gameState.currentRound < CONFIG.totalRounds) {
+                gameState.currentRound++;
+                newGame();
+            } else {
+                endGame();
+            }
+        }
+        
+        // Finalizar jogo
+        function endGame() {
+            showMessage(`🏆 Jogo finalizado! Pontuação final: ${gameState.score}`, 'success');
+            document.getElementById('hintBtn').disabled = true;
+        }
+        
+        // Reset dos botões das letras
+        function resetLetterButtons() {
+            const buttons = document.querySelectorAll('.letter-btn');
+            buttons.forEach(button => {
+                button.disabled = false;
+                button.className = 'letter-btn';
+            });
+        }
+        
+        // Mostrar mensagem
+        function showMessage(text, type) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = text;
+            messageElement.className = `message ${type}`;
+            messageElement.style.display = 'block';
+        }
+        
+        // Esconder mensagem
+        function hideMessage() {
+            document.getElementById('message').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
